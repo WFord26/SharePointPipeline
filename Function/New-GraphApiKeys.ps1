@@ -1,31 +1,34 @@
-function Get-GraphApiKeys {
-    $spRootSite = Read-Host "Enter the SharePoint Root Site (e.g. contoso.sharepoint.com)"
+function New-GraphApiKeys {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, HelpMessage = "Enter the root site of the SharePoint site(eg. contoso.sharepoint.com")]
+        [string]$spRootSite
+    )
     $tenantId = Read-Host "Enter the Tenant ID"
     $clientId = Read-Host "Enter the Client ID"
     $clientSecret = Read-Host "Enter the Client Secret" -AsSecureString
     # Confirm that all variables have been set
     if ($tenantId -and $clientId -and $clientSecret -and $spRootSite) {
-        # Convert the secure string to plain text
-        $plainClientSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($clientSecret))
+        
         # Display the values to the user
         Write-Host "SP_ROOT_SITE: $spRootSite"
         Write-Host "TENANT_ID: $tenantId"
         Write-Host "CLIENT_ID: $clientId"
-        Write-Host "CLIENT_SECRET: $plainClientSecret"
-        $plainClientSecret = $null
+        Write-Host "CLIENT_SECRET: $(ConvertFrom-SecureString -SecureString $clientSecret -AsPlainText)"
+
         # Check if Values are correct only allow Y/N
         $correct = Read-Host "Are these values correct? (Y/N)"
         if ($correct -eq "Y") {
-            $saveKey = @{}
-            $saveKey.Add("SP_ROOT_SITE", $spRootSite)
-            $saveKey.Add("TENANT_ID", $tenantId)
-            $saveKey.Add("CLIENT_ID", $clientId)
-            $saveKey.Add("CLIENT_SECRET", $clientSecret)
-            Save-GraphApiKeys -keys $saveKey
+            $keyToSave = @{}
+            $keyToSave.Add("SP_ROOT_SITE", $spRootSite)
+            $keyToSave.Add("TENANT_ID", $tenantId)
+            $keyToSave.Add("CLIENT_ID", $clientId)
+            $keyToSave.Add("CLIENT_SECRET", $clientSecret)
+            Save-GraphApiKeys -keys $keyToSave
         } else {
             # Call the function again
             Write-Host "Please enter the correct values" -ForegroundColor Red
-            Get-GraphApiKeys
+            New-GraphApiKeys
         }
     } else {
         Write-Host "Please enter all required values" -ForegroundColor Red
@@ -35,8 +38,9 @@ function Get-GraphApiKeys {
             # Call the function again
             Get-GraphApiKeys
         } else {
+            Write-Host "Alright, giving up already? Maybe next time you'll get it right." -ForegroundColor Yellow
             # Exit the script
-            exit
+            Clear-GraphApiEnvironment
     }
 }
 }
