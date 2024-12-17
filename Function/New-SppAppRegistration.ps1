@@ -31,8 +31,6 @@ function New-SppAppRegistration {
     Connect-AzureAD
     # Create the app registration
     $appRegistration = New-AzureADApplication -DisplayName "SPP-Graph-App"
-    # Create the service principal
-    $servicePrincipal = New-AzureADServicePrincipal -AppId $appRegistration.AppId
     # Creare a description for the app
     $appRegistration.Description = "App registration for SharePointPipeline Graph API"
     # Create the secret
@@ -79,6 +77,7 @@ function New-SppAppRegistration {
     if ($response -eq "Y") {
         $spRootSite = Read-Host "Enter the root site of the SharePoint site(eg. contoso.sharepoint.com)"
         $key.Add("SP_ROOT_SITE", $spRootSite)
+        $key["CLIENT_SECRET"] = $key["CLIENT_SECRET"] | ConvertTo-SecureString -AsPlainText -Force
         Save-GraphApiKeys -keys $key
         exit
     } else {
