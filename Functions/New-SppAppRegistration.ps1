@@ -116,71 +116,72 @@ function New-SppAppRegistration {
         }
     } else {
         Write-Host "Creating app registration" -ForegroundColor Green
-    }
-    # Create the app registration
-    $appRegistration = New-AzureADApplication -DisplayName "SPP-Graph-App"
-    # Create a description for the app
-    $appRegistration.Description = "App registration for SharePointPipeline Graph API"
-    # Create the secret
-    $secret = New-AzureADApplicationPasswordCredential -ObjectId $appRegistration.ObjectId
-    if (-not $secret) {
-        Write-Host "Failed to create application password credential" -ForegroundColor Red
-        exit
-    }
-    # Add Graph API permissions Site.Read.All and Site.ReadWrite.All
-    $graphPermissions = @(
-        "Sites.Read.All",
-        "Sites.ReadWrite.All"
-    )
-
-    $graphServicePrincipal = Get-AzureADServicePrincipal -Filter "displayName eq 'Microsoft Graph'"
-    $requiredResourceAccess = New-Object -TypeName Microsoft.Open.AzureAD.Model.RequiredResourceAccess
-    $requiredResourceAccess.ResourceAppId = $graphServicePrincipal.AppId
-
-    $resourceAccesses = @()
-    foreach ($permission in $graphPermissions) {
-        $appRole = $graphServicePrincipal.AppRoles | Where-Object { $_.Value -eq $permission -and $_.AllowedMemberTypes -contains "Application" }
-        $resourceAccess = New-Object -TypeName Microsoft.Open.AzureAD.Model.ResourceAccess
-        $resourceAccess.Id = $appRole.Id
-        $resourceAccess.Type = "Role"
-        $resourceAccesses += $resourceAccess
-    }
-
-    $requiredResourceAccess.ResourceAccess = $resourceAccesses
-    Set-AzureADApplication -ObjectId $appRegistration.ObjectId -RequiredResourceAccess @($requiredResourceAccess)
-    # Set Reply URL to return to PowerShell
-    $replyUrl = "http://localhost"
-    Set-AzureADApplication -ObjectId $appRegistration.ObjectId -ReplyUrls @($replyUrl)
-    # Grant admin consent for the permissions https://login.microsoftonline.com/{organization}/adminconsent?client_id={client-id}
-    $tenantId = (Get-AzureADTenantDetail).ObjectId
-    if (-not $tenantId) {
-        Write-Host "Failed to get tenant ID" -ForegroundColor Red
-        exit
-    }
-    $adminConsentUrl = "https://login.microsoftonline.com/$tenantId/adminconsent?client_id=$($appRegistration.AppId)"
-    Start-Process -FilePath $adminConsentUrl
-
-    # Create Key file
-    $key = @{
-        TENANT_ID     = $tenantId
-        CLIENT_ID     = $appRegistration.AppId
-        CLIENT_SECRET = $secret.Value
-    }
-    Write-Host "Keys have been generated, please save them in a secure location" -ForegroundColor Green
-    Write-Host "Do you want to create a key file?" -ForegroundColor Yellow
-    $response = Read-Host "Y/N"
-    if ($response -eq "Y") {
-        $spRootSite = Read-Host "Enter the root site of the SharePoint site(eg. contoso.sharepoint.com)"
-        $key.Add("SP_ROOT_SITE", $spRootSite)
-        $key["CLIENT_SECRET"] = $key["CLIENT_SECRET"] | ConvertTo-SecureString -AsPlainText -Force
-        Save-GraphApiKeys -keys $key
-        if (-not $?) {
-            Write-Host "Failed to save keys" -ForegroundColor Red
+        # Create the app registration
+        $appRegistration = New-AzureADApplication -DisplayName "SPP-Graph-App"
+        # Create a description for the app
+        $appRegistration.Description = "App registration for SharePointPipeline Graph API"
+        # Create the secret
+        $secret = New-AzureADApplicationPasswordCredential -ObjectId $appRegistration.ObjectId
+        if (-not $secret) {
+            Write-Host "Failed to create application password credential" -ForegroundColor Red
             exit
         }
-        exit
-    } else {
-        Write-Host "Fine, but don't blame me when you forget them!" -ForegroundColor Yellow
-        exit
+        # Add Graph API permissions Site.Read.All and Site.ReadWrite.All
+        $graphPermissions = @(
+            "Sites.Read.All",
+            "Sites.ReadWrite.All"
+        )
+
+        $graphServicePrincipal = Get-AzureADServicePrincipal -Filter "displayName eq 'Microsoft Graph'"
+        $requiredResourceAccess = New-Object -TypeName Microsoft.Open.AzureAD.Model.RequiredResourceAccess
+        $requiredResourceAccess.ResourceAppId = $graphServicePrincipal.AppId
+
+        $resourceAccesses = @()
+        foreach ($permission in $graphPermissions) {
+            $appRole = $graphServicePrincipal.AppRoles | Where-Object { $_.Value -eq $permission -and $_.AllowedMemberTypes -contains "Application" }
+            $resourceAccess = New-Object -TypeName Microsoft.Open.AzureAD.Model.ResourceAccess
+            $resourceAccess.Id = $appRole.Id
+            $resourceAccess.Type = "Role"
+            $resourceAccesses += $resourceAccess
+        }
+
+        $requiredResourceAccess.ResourceAccess = $resourceAccesses
+        Set-AzureADApplication -ObjectId $appRegistration.ObjectId -RequiredResourceAccess @($requiredResourceAccess)
+        # Set Reply URL to return to PowerShell
+        $replyUrl = "http://localhost"
+        Set-AzureADApplication -ObjectId $appRegistration.ObjectId -ReplyUrls @($replyUrl)
+        # Grant admin consent for the permissions https://login.microsoftonline.com/{organization}/adminconsent?client_id={client-id}
+        $tenantId = (Get-AzureADTenantDetail).ObjectId
+        if (-not $tenantId) {
+            Write-Host "Failed to get tenant ID" -ForegroundColor Red
+            exit
+        }
+        $adminConsentUrl = "https://login.microsoftonline.com/$tenantId/adminconsent?client_id=$($appRegistration.AppId)"
+        Start-Process -FilePath $adminConsentUrl
+
+        # Create Key file
+        $key = @{
+            TENANT_ID     = $tenantId
+            CLIENT_ID     = $appRegistration.AppId
+            CLIENT_SECRET = $secret.Value
+        }
+        Write-Host "Keys have been generated, please save them in a secure location" -ForegroundColor Green
+        Write-Host "Do you want to create a key file?" -ForegroundColor Yellow
+        $response = Read-Host "Y/N"
+        if ($response -eq "Y") {
+            $spRootSite = Read-Host "Enter the root site of the SharePoint site(eg. contoso.sharepoint.com)"
+            $key.Add("SP_ROOT_SITE", $spRootSite)
+            $key["CLIENT_SECRET"] = $key["CLIENT_SECRET"] | ConvertTo-SecureString -AsPlainText -Force
+            Save-GraphApiKeys -keys $key
+            if (-not $?) {
+                Write-Host "Failed to save keys" -ForegroundColor Red
+                exit
+            }
+            exit
+        } else {
+            Write-Host "Fine, but don't blame me when you forget them!" -ForegroundColor Yellow
+            exit
+        }
     }
 }
+    
